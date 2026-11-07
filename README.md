@@ -3,8 +3,6 @@
 Aplicação full stack de cadastro e login. O usuário cria uma conta, entra
 com email e senha e acessa uma página que só abre para quem está logado.
 
-https://github.com/user-attachments/assets/c55d0afa-4152-4027-a784-38c431236624
-
 ## Como funciona
 
 - As senhas são salvas criptografadas com bcrypt, nunca em texto puro.
