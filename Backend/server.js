@@ -1,13 +1,11 @@
+import "dotenv/config";
 import express from "express";
 import cors from "cors";
-import dotenv from "dotenv";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 
 const prisma = new PrismaClient();
-
-dotenv.config();
 
 const app = express();
 
