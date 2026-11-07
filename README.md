@@ -3,6 +3,13 @@
 Aplicação full stack de cadastro e login. O usuário cria uma conta, entra
 com email e senha e acessa uma página que só abre para quem está logado.
 
+**Teste online:** https://projeto1-crud-full-stack.vercel.app
+
+O servidor está no plano gratuito do Render, que desliga quando ninguém usa.
+O site já tenta religar o servidor assim que abre, mas, se ele estiver
+parado, o primeiro login ou cadastro pode levar até 1 minuto. Depois disso,
+funciona normalmente.
+
 ## Como funciona
 
 - As senhas são salvas criptografadas com bcrypt, nunca em texto puro.
@@ -15,14 +22,16 @@ Fiz a primeira versão há um tempo e depois voltei para corrigir problemas
 que encontrei revisando o código: o cadastro respondia "sucesso" antes de
 salvar o usuário, havia uma rota que mostrava todos os usuários (com as
 senhas criptografadas) para qualquer pessoa, e o token não expirava nunca.
+Depois das correções, publiquei o front na Vercel e o servidor no Render.
 
 ## Tecnologias
 
 - **Front:** React, Vite, React Router, Axios
 - **Back:** Node.js, Express, Prisma, bcrypt, JWT
-- **Banco:** MongoDB
+- **Banco:** MongoDB Atlas
+- **Deploy:** Vercel (front) e Render (servidor)
 
-## Rodando o projeto
+## Rodando no seu computador
 
 O projeto tem duas partes, cada uma na sua pasta. Use dois terminais.
 
@@ -39,7 +48,7 @@ e uma chave secreta para o JWT. Depois:
 ```bash
 npx prisma generate
 npx prisma db push
-npm start
+npm run dev
 ```
 
 O servidor sobe em `http://localhost:3000`.
@@ -72,4 +81,3 @@ npm run dev
   só mostra os dados dele)
 - Testes automatizados das rotas
 - Deixar as telas responsivas para celular
-- Publicar online
