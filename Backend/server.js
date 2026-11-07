@@ -162,4 +162,4 @@ app.delete("/api/login/:id", async (req, res) => {
   res.status(200).json({ msg: `Usuario deletado` });
 });
 
-app.listen(3000);
+app.listen(process.env.PORT || 3000);
