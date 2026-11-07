@@ -13,25 +13,23 @@ app.use(cors());
 app.use(express.json());
 
 function checkToken(req, res, next) {
+  // O token chega no cabeçalho assim: "Bearer eyJhbGci..."
   const authHeader = req.headers["authorization"];
   const token = authHeader && authHeader.split(" ")[1];
 
-  if (!token) return res.status(401).json({ msg: "Acesso negado" });
+  if (!token) {
+    return res.status(401).json({ msg: "Acesso negado" });
+  }
 
   try {
-    const secret = process.env.SECRET;
-    jwt.verify(token, secret);
-
-    next();
-  } catch (error) {
-    res.status(400).json({ msg: "token invalido" });
+    // Confere e lê o id do usuário que está dentro do token
+    const payload = jwt.verify(token, process.env.SECRET);
+    req.userId = payload.id;
+    next(); // libera a passagem para a rota
+  } catch (err) {
+    return res.status(401).json({ msg: "Token inválido ou expirado" });
   }
 }
-
-app.get("/api/registro", async (req, res) => {
-  const listaUsuarios = await prisma.user.findMany({});
-  res.status(200).json({ listaUsuarios });
-});
 
 app.post("/api/registro", async (req, res) => {
   try {
@@ -69,98 +67,60 @@ app.post("/api/registro", async (req, res) => {
   }
 });
 
-app.delete("/api/registro/:id", async (req, res) => {
-  const { id } = req.params;
-  await prisma.user.delete({
-    where: {
-      id,
-    },
-  });
-  res.status(200).json({ msg: `Usuario deletado` });
-});
-
-//private route - requisição no postman
-app.get("/api/user/:id", checkToken, async (req, res) => {
-  const id = req.params.id;
-
-  //checa se usuario existe
-  const user = await prisma.user.findUnique({
-    where: {
-      id,
-    },
-    select: {
-      //para esconder a senha quando eu fizer uma requisição
-      id: true,
-      nome: true,
-      email: true,
-    },
-  });
-  if (!user) return res.status(404).json({ msg: "Usuário não encontrado" });
-  res.status(200).json({ user });
-});
-
-//fazer o login no front
-app.get("/api/login/user"),
-  async (req, res) => {
-    const authHeader = req.headers["authorization"];
-    const token = authHeader && authHeader.split(" ")[1];
-
-    if (!token) return res.status(401).json({ msg: "Acesso negado" });
-
-    try {
-      const secret = process.env.SECRET;
-      jwt.verify(token, secret);
-      res.status(200).json({ msg: "Login" });
-      next();
-    } catch (error) {
-      res.status(400).json({ msg: "token invalido" });
-    }
-  };
-
 app.post("/api/login", async (req, res) => {
-  const { email, password } = req.body;
-
-  //Conferindo se email existe
-  const user = await prisma.user.findUnique({
-    where: {
-      email,
-    },
-  });
-
-  if (!user) return res.status(404).json({ msg: "Usuário não cadastrado" });
-
-  //check password
-  const checkPassword = await bcrypt.compare(password, user.password);
-
-  if (!checkPassword) return res.status(422).json({ msg: "Senha inválida" });
-
   try {
-    const secret = process.env.SECRET;
-    const token = jwt.sign(
-      {
-        id: user.id,
-      },
-      secret
-    );
-    res.status(200).json({ msg: "Autenticação realizada com sucesso", token });
-  } catch (error) {}
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ msg: "Preencha email e senha" });
+    }
+
+    const user = await prisma.user.findUnique({ where: { email } });
+
+    const senhaCorreta = user && (await bcrypt.compare(password, user.password));
+    if (!senhaCorreta) {
+      return res.status(401).json({ msg: "Email ou senha inválidos" });
+    }
+
+    const token = jwt.sign({ id: user.id }, process.env.SECRET, {
+      expiresIn: "1h",
+    });
+
+    return res.status(200).json({ msg: "Login realizado com sucesso", token });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ msg: "Erro ao fazer login" });
+  }
 });
 
-app.get("/api/login", async (req, res) => {
-  const login = await prisma.login.findMany({});
-  res.status(200).json({
-    login
-  });
+// Dados do usuário logado
+app.get("/api/me", checkToken, async (req, res) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.userId },
+      select: { id: true, nome: true, email: true },
+    });
+
+    if (!user) {
+      return res.status(404).json({ msg: "Usuário não encontrado" });
+    }
+
+    return res.status(200).json(user);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ msg: "Erro ao buscar usuário" });
+  }
 });
 
-app.delete("/api/login/:id", async (req, res) => {
-  const { id } = req.params;
-  await prisma.login.delete({
-    where: {
-      id,
-    },
-  });
-  res.status(200).json({ msg: `Usuario deletado` });
+// Apagar a própria conta
+app.delete("/api/me", checkToken, async (req, res) => {
+  try {
+    await prisma.user.delete({ where: { id: req.userId } });
+    return res.status(204).send(); // 204 = deu certo, sem conteúdo para devolver
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ msg: "Erro ao apagar conta" });
+  }
 });
 
 app.listen(3000);
