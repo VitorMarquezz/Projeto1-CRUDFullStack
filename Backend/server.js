@@ -34,35 +34,38 @@ app.get("/api/registro", async (req, res) => {
 });
 
 app.post("/api/registro", async (req, res) => {
-  const { nome, email, password } = req.body;
-
-  //Confirmando usuario ja registrado
-
-  const emailExistente = await prisma.user.findUnique({
-    where: {
-      email,
-    },
-  });
-
-  if (emailExistente)
-    return res.status(422).json({ msg: "Email ja cadastrado" });
-  res.status(200).json({ msg: "Usuário cadastrado com sucesso" });
-
-  //Cripto senha
-
-  const salt = await bcrypt.genSalt(12);
-  const passwordHash = await bcrypt.hash(password, salt);
-
   try {
-    await prisma.user.create({
-      data: {
-        nome,
-        email,
-        password: passwordHash,
-      },
+    // Pega os dados que o front enviou
+    const { nome, email, password } = req.body;
+
+    // 1. Confere se todos os campos vieram preenchidos
+    if (!nome || !email || !password) {
+      return res.status(400).json({ msg: "Preencha nome, email e senha" });
+    }
+
+    // 2. Confere se o email já está cadastrado
+    const emailExistente = await prisma.user.findUnique({
+      where: { email },
     });
-  } catch {
-    res.status(422).json({ Error });
+    if (emailExistente) {
+      return res.status(409).json({ msg: "Email já cadastrado" });
+    }
+
+    // 3. Criptografa a senha
+    const passwordHash = await bcrypt.hash(password, 12);
+
+    // 4. Salva no banco e devolve só id, nome e email (sem a senha)
+    const usuario = await prisma.user.create({
+      data: { nome, email, password: passwordHash },
+      select: { id: true, nome: true, email: true },
+    });
+
+    // 5. Só agora, com tudo salvo, responde que deu certo
+    return res.status(201).json(usuario);
+  } catch (err) {
+    // 6. Se qualquer passo acima falhar, cai aqui
+    console.error(err);
+    return res.status(500).json({ msg: "Erro ao cadastrar usuário" });
   }
 });
 
